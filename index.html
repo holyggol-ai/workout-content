@@ -158,6 +158,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const X=(n,s,r,rest,m,w,p,c,x)=>({n,s,r,rest,m,w,p,c,x});
 const EXT=['무릎을 기구 회전축에 맞추고 패드는 발목 위에 둡니다. 끝까지 펴고 1초 멈춘 뒤 천천히 내립니다.','허벅지 앞쪽이 쥐어짜지는 느낌. 엉덩이는 의자에 붙입니다.','반동으로 차올리면 무릎 앞쪽에 충격이 반복됩니다. 회전축이 어긋나면 무릎에 비틀린 힘이 걸립니다.'];
 const STAIR=['상체를 세우고 발 전체로 계단을 딛습니다. 손잡이는 균형용으로 가볍게만.','디딘 발의 뒤꿈치로 밀어 엉덩이를 쓰는 느낌.','손잡이에 기대면 소모 칼로리가 크게 줄고 손목·어깨에 무리가 갑니다. 손을 놓고 못 탈 속도면 낮추세요.'];
+const VIDS={"벤치프레스": "fxDm3Z0Jw7U", "바벨 스쿼트": "wQmJ0S8tgXs", "덤벨 루마니안 데드리프트": "ArBMmz3N5dY", "바벨 루마니안 데드리프트": "ArBMmz3N5dY", "랫풀다운": "KwXgpXZ2I7k", "레그프레스": "UwQ3alQfVNI", "덤벨 숄더프레스": "QV9Z4EJ4rBQ", "덤벨 워킹 런지": "u46SxgaQBdM", "레그 익스텐션": "nh1KdxTIDrQ", "플랭크": "Zq8nRY9P_cM", "사이드 플랭크": "SupyDFxclPk", "천국의계단": "XSfI9cky9r8", "천국의계단 지속": "XSfI9cky9r8", "케이블 시티드 로우": "lyaCTVKsU9o", "케이블 푸시다운": "u_UixmRG1MI", "덤벨 원암 로우": "8h5PWkIA1Kw", "덤벨 컬": "cOver4_h5Uw", "러닝머신 경사 걷기": "CFToAm4l_zs", "러닝머신 인터벌": "0D6Fu-QQxYQ", "실내 자전거": "M4uvf280gXU", "실내 자전거 인터벌": "M4uvf280gXU", "행잉 니레이즈": "2skxTvZHDdc", "덤벨 불가리안 스플릿 스쿼트": "WYlyn5cxpBE", "케이블 풀스루": "fbF4_pn_0xc", "풀업 / 네거티브": "dm5dfExN-6Q", "체스트프레스": "BccYmGUKmb4", "케이블 사이드 레터럴 레이즈": "tA8hGRE63gI", "케이블 페이스풀": "1ai8x3IqVrk"};
 const DAYS=[null,
 {t:'하체 A',s:'스쿼트 중심',i:[
 X('바벨 스쿼트',4,'4세트 × 6~8회',120,'squat',1,'바를 어깨 뒷살에 얹고 발은 어깨너비, 발끝은 살짝 바깥. 엉덩이를 뒤로 빼며 무릎을 발끝 방향으로 굽혀 허벅지가 바닥과 평행할 때까지 앉습니다.','허벅지 앞과 엉덩이. 가슴을 세우고 발 전체로 바닥을 밀며 일어납니다.','무릎이 안으로 모이면 무릎 인대, 뒤꿈치가 뜨면 무릎 앞쪽에 부담. 바닥에서 꼬리뼈가 말리면 허리 디스크에 압력이 갑니다. 안전바는 앉은 높이보다 조금 낮게.'),
@@ -301,13 +302,13 @@ function render(){
     const cnt=done.filter(Boolean).length;tot+=it.s;dn+=Math.min(cnt,it.s);const all=cnt>=it.s;
     const dots=it.s===1?`<button class="dot wide ${done[0]?'on':''}" data-set="${id}" data-k="0">${done[0]?'완료':'완료 체크'}</button>`
       :Array.from({length:it.s},(_,k)=>`<button class="dot ${done[k]?'on':''}" data-set="${id}" data-k="${k}" aria-label="${k+1}세트">${k+1}</button>`).join('');
-    const yt='https://www.youtube.com/results?search_query='+encodeURIComponent(it.n.replace(' / 네거티브','')+' 자세');
+    const vid=VIDS[it.n],yt=vid?'https://www.youtube.com/watch?v='+vid:'https://www.youtube.com/results?search_query='+encodeURIComponent(it.n.replace(' / 네거티브','')+' 자세');
     return `<article class="card ${all?'ok':''}"><div class="row1"><span class="no">${all?'✓':i+1}</span><div class="nm"><h3>${it.n}</h3><p>${it.r}${it.rest?` · 휴식 ${fmt(it.rest)}`:''}</p></div></div>
     <div class="row2">${it.w?`<label class="wt"><input inputmode="decimal" data-w="${id}" value="${esc(w)}" placeholder="무게" aria-label="${it.n} 무게"><span>kg</span></label>`:''}<div class="sets">${dots}</div></div>
     <button class="more" data-more="${id}" aria-expanded="${open.has(id)}">${open.has(id)?'자세 접기':'자세 영상 보기'}</button>
     ${open.has(id)?`<div class="det"><div class="fig" data-fig="${id}"><svg viewBox="0 0 220 200" data-m="${it.m}" data-id="${id}" role="img" aria-label="${it.n} 동작 애니메이션"></svg><span class="hint">${reduce?'탭하여 재생':'탭하여 멈춤'} · 빨간 부위에 집중</span></div>
     <dl><dt>자세</dt><dd>${it.p}</dd><dt>집중</dt><dd>${it.c}</dd><dt>잘못하면</dt><dd>${it.x}</dd></dl>
-    <a class="yt" href="${yt}" target="_blank" rel="noopener">실제 영상 찾아보기 (YouTube)</a></div>`:''}</article>`}).join('');
+    <a class="yt" href="${yt}" target="_blank" rel="noopener">${vid?'실제 자세 영상 보기 (YouTube)':'실제 영상 찾아보기 (YouTube)'}</a></div>`:''}</article>`}).join('');
   let sess='';
   if(AN&&sel===wd){const act=AN.sessionActive();
     sess=`<button class="watch ${act?'on':''}" id="sessBtn">${act?'알림 연동 중 · 운동 끝내기':'워치로 운동 시작'}</button><p class="wmsg">${wmsg||(act?'워치 알림에서 [세트 완료]를 누르세요.':(AN.startWatchWorkout?'누르면 워치에 시작 알림이 가요. 워치 앱에서 바로 [시작]을 눌러도 돼요.':'시작하면 워치에 현재 운동과 [세트 완료] 버튼이 떠요.'))}</p>`}

@@ -264,21 +264,45 @@ function render(){
     <a class="yt" href="${yt}" target="_blank" rel="noopener">실제 영상 찾아보기 (YouTube)</a></div>`:''}</article>`}).join('');
   let sess='';
   if(AN&&sel===wd){const act=AN.sessionActive();
-    sess=`<button class="watch ${act?'on':''}" id="sessBtn">${act?'워치 연동 중 · 운동 끝내기':'워치로 운동 시작'}</button><p class="wmsg">${wmsg||(act?'워치 알림에서 [세트 완료]를 누르세요. 휴식이 끝나면 워치가 진동해요.':'시작하면 워치에 현재 운동과 [세트 완료] 버튼이 떠요.')}</p>`}
+    sess=`<button class="watch ${act?'on':''}" id="sessBtn">${act?'알림 연동 중 · 운동 끝내기':'워치로 운동 시작'}</button><p class="wmsg">${wmsg||(act?'워치 알림에서 [세트 완료]를 누르세요.':(AN.startWatchWorkout?'누르면 워치에 시작 알림이 가요. 워치 앱에서 바로 [시작]을 눌러도 돼요.':'시작하면 워치에 현재 운동과 [세트 완료] 버튼이 떠요.'))}</p>`}
   $('#list').innerHTML=`${sess}<p class="note">시작 전 5분 워밍업: 러닝머신 빠르게 걷기</p>${cards}`;
   $('#bar').style.width=(tot?dn/tot*100:0)+'%';$('#ptext').textContent=sel===wd?`오늘 ${dn} / ${tot}세트 완료`:'다른 요일은 미리보기예요. 체크는 오늘 날짜로 기록됩니다.'}
 document.addEventListener('click',e=>{
   const b=e.target.closest('button,[data-fig]');if(!b)return;
   if(b.dataset.d){sel=+b.dataset.d;render();scrollTo({top:0});return}
-  if(b.id==='sessBtn'){if(AN.sessionActive()){AN.endSession();wmsg=''}else{const D=DAYS[sel];
+  if(b.id==='sessBtn'){if(AN.sessionActive()){AN.endSession();wmsg=''}
+    else if(AN.startWatchWorkout&&AN.startWatchWorkout()){wmsg='워치에 시작 알림을 보냈어요. 워치에서 알림을 눌러 [시작]하세요.'}
+    else{const D=DAYS[sel];
     const plan={title:D.t,items:D.i.map((it,i)=>({id:`${sel}-${i}`,n:it.n,s:it.s,rest:it.rest,r:it.r,w:!!it.w}))};
     wmsg=AN.startSession(JSON.stringify(plan))?"설정 화면에서 '알람 및 리마인더'를 켜고 돌아오세요. 휴식 진동이 정확해져요.":''}
     render();return}
   if(b.dataset.more){const id=b.dataset.more;open.has(id)?open.delete(id):open.add(id);render();return}
   if(b.dataset.fig){const id=b.dataset.fig,s=b.querySelector('svg');if(reduce){s.dataset.play?delete s.dataset.play:s.dataset.play='1'}else{paused.has(id)?paused.delete(id):paused.add(id)}return}
   if(b.dataset.set){const id=b.dataset.set,k=+b.dataset.k,[d,i]=id.split('-').map(Number),it=DAYS[d].i[i],done=store.get(dk(id),[]);
-    done[k]=!done[k];store.set(dk(id),done);if(done[k]&&it.rest)startTimer(it.rest,`${it.n} 휴식`);render()}});
-document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.w)store.set('wk:w:'+t.dataset.w,t.value)});
+    done[k]=!done[k];store.set(dk(id),done);
+    try{AN&&AN.logSet&&AN.logSet(id,it.n,k+1,!!done[k],String(store.get('wk:w:'+id,'')))}catch(e){}
+    if(done[k]&&it.rest)startTimer(it.rest,`${it.n} 휴식`);render()}});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.w){store.set('wk:w:'+t.dataset.w,t.value);clearTimeout(planT);planT=setTimeout(syncPlan,1200)}});
+/* 워치 앱에 보낼 주간 루틴: 운동 종류·세트·휴식·목표 무게 */
+let planT=0;
+function planItem(it,id){
+  const reps=it.r.replace(/^\d+세트\s*×\s*/,'');
+  const base={id,name:it.n,sets:it.s,reps,rest:it.rest,weight:it.w?String(store.get('wk:w:'+id,'')):''};
+  if(it.s===1){
+    const iv=it.r.match(/(\d+)초[^\d]+(\d+)초[^\d]+(\d+)/);
+    if(/인터벌/.test(it.n)&&iv)return {...base,kind:'interval',work:+iv[1],easy:+iv[2],rounds:+iv[3]};
+    const min=it.r.match(/(\d+)분/);
+    if(/인터벌/.test(it.n)&&min&&/1분 빠르게/.test(it.r))return {...base,kind:'interval',seconds:+min[1]*60,work:60,easy:60,rounds:Math.ceil(+min[1]/2)};
+    if(min)return {...base,kind:'time',seconds:+min[1]*60};
+  }
+  return {...base,kind:'set'};
+}
+function syncPlan(){
+  if(!AN||!AN.syncPlan)return;
+  const days={};
+  for(let d=1;d<=5;d++)days[d]={title:DAYS[d].t,items:DAYS[d].i.map((it,i)=>planItem(it,`${d}-${i}`))};
+  try{AN.syncPlan(JSON.stringify({days}))}catch(e){}
+}
 
 /* ---------- 휴식 타이머 ---------- */
 let tEnd=0,tId=0,hideId=0;
@@ -290,6 +314,7 @@ function stop(){if(Date.now()<tEnd){try{AN&&AN.cancelRest()}catch(e){}}clearInte
 $('#tplus').addEventListener('click',()=>{if(Date.now()>tEnd)tEnd=Date.now();tEnd+=30000;clearTimeout(hideId);$('#timer').classList.remove('done');clearInterval(tId);tick();tId=setInterval(tick,250)});
 $('#tstop').addEventListener('click',stop);
 render();requestAnimationFrame(frame);
+syncPlan();
 if(AN){/* 워치에서 체크하면 열려 있는 화면도 따라 바뀐다 */
   const typing=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
   let lv=AN.kvVersion();

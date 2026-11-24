@@ -97,6 +97,10 @@ dd{margin:2px 0 0;font-size:15px}
   <p>평일(월~금) 정해진 시간에 그날 운동을 알려드려요. 휴대폰 절전 상태에 따라 몇 분 늦게 올 수 있어요.</p>
   <div class="rrow"><label class="sw"><input type="checkbox" id="ron"> 알림 켜기</label><input type="time" id="rtime" value="18:00" aria-label="알림 시간"><button id="rtest">알림 미리보기</button></div>
   <div class="rmsg" id="rmsg"></div>
+  <h2 style="margin-top:18px">오늘 기록 지우기</h2>
+  <p>테스트로 체크한 오늘의 세트·워치 기록·요약을 지워요. 목표 무게는 그대로 남아요. 워치에서 운동 중이면 먼저 끝내고 지우세요.</p>
+  <div class="rrow"><button id="rreset">오늘 기록 지우기</button></div>
+  <div class="rmsg" id="rresetmsg"></div>
 </section></div>
 <div class="wrap"><p class="foot">무게 올리는 법: 모든 세트에서 정해진 횟수의 최대치를 채우면 다음 회차에 상체 +2.5kg, 하체 +5kg. 첫 2주는 2~3개 더 할 수 있겠다 싶은 무게로 자세부터 익히세요.<br>동작별 자세를 더 자세히 보려면 <a href="https://claude.ai/artifact/6KG8w3SPGEUG9TVYyPtGtr">자세 가이드 문서</a>를 여세요.</p></div>
 <div class="timer" id="timer" hidden><div class="wrap">
@@ -326,6 +330,14 @@ if(window.Android){
   try{const r=JSON.parse(Android.getReminder());on.checked=r.on;tm.value=String(r.h).padStart(2,'0')+':'+String(r.m).padStart(2,'0')}catch(e){}
   const save=()=>{const [h,m]=(tm.value||'18:00').split(':').map(Number);Android.setReminder(on.checked,h,m);msg.textContent=on.checked?`평일 ${tm.value}에 알려드릴게요.`:'알림을 껐어요.'};
   on.addEventListener('change',save);tm.addEventListener('change',save);
+  let armedReset=0;
+  $('#rreset').addEventListener('click',()=>{const b=$('#rreset'),m=$('#rresetmsg');
+    if(Date.now()-armedReset>4000){armedReset=Date.now();b.textContent='한 번 더 누르면 지워져요';m.textContent='';return}
+    armedReset=0;b.textContent='오늘 기록 지우기';
+    try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.startsWith('wk:done:'+dkey+':'))localStorage.removeItem(k)}}catch(e){}
+    if(Android.resetToday){Android.resetToday();m.textContent='오늘 기록을 지웠어요. 워치에도 반영돼요.'}
+    else{for(let d=1;d<=5;d++)DAYS[d].i.forEach((it,i)=>store.set(dk(`${d}-${i}`),[]));m.textContent='체크를 지웠어요. 워치 기록까지 지우려면 휴대폰 앱을 최신으로 업데이트하세요.'}
+    render()});
   $('#rtest').addEventListener('click',()=>{Android.testReminder();msg.textContent='알림이 안 보이면 휴대폰 설정에서 이 앱의 알림을 허용해 주세요.'});
 }
 }

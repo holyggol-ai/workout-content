@@ -79,11 +79,50 @@ dd{margin:2px 0 0;font-size:15px}
 .watch{width:100%;min-height:52px;margin:12px 0 4px;border:0;border-radius:12px;background:var(--ink);color:var(--bg);font:700 16px "Noto Sans KR",sans-serif;cursor:pointer}
 .watch.on{background:var(--red);color:#fff}
 .wmsg{font-size:13px;color:var(--mute);margin:0 0 4px}
+.views{display:flex;gap:6px;margin-bottom:12px}
+.views button{height:36px;padding:0 16px;border:0;border-radius:18px;background:rgba(255,255,255,.18);color:#fff;font:700 14px "Noto Sans KR",sans-serif;cursor:pointer}
+.views button[aria-pressed=true]{background:#fff;color:var(--red)}
+body.hist .prog,body.hist #ptext,body.hist .remind,body.hist .foot{display:none}
+.hnav{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+.hnav b{font-size:17px}
+.hnav button{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:700 18px "Noto Sans KR",sans-serif;cursor:pointer}
+.hnav button:disabled{opacity:.35}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}
+.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi small{font-size:12px;color:var(--mute)}
+.kpi i{display:block;font-style:normal;font-size:11px;color:var(--redink);margin-top:2px}
+.bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:160px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 10px 8px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;border:0;background:none;padding:0;cursor:pointer;color:var(--ink);font:12px "Noto Sans KR",sans-serif}
+.bar span{font-size:12px;font-variant-numeric:tabular-nums;margin-bottom:3px}
+.bar div{width:70%;max-width:34px;border-radius:6px 6px 3px 3px;background:var(--red);min-height:3px}
+.bar div.zero{background:var(--line)}
+.bar em{font-style:normal;color:var(--mute);margin-top:5px}
+.bar.sel em{color:var(--redink);font-weight:700}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.cal .h{text-align:center;font-size:12px;color:var(--mute);padding-bottom:4px}
+.cal button{aspect-ratio:1;border:0;border-radius:10px;background:transparent;color:var(--ink);font:14px "Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer;position:relative}
+.cal button.on{background:var(--red);color:#fff;font-weight:700}
+.cal button.lite{background:var(--soft);color:var(--redink);font-weight:700}
+.cal button.today{outline:2px solid var(--ink);outline-offset:-2px}
+.cal button.sel{outline:2px solid var(--redink);outline-offset:-2px}
+.detail{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.detail h3{margin:0 0 2px;font-size:16px}
+.detail p{margin:0 0 8px;font-size:13px;color:var(--mute)}
+.drow{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.drow span:last-child{color:var(--mute);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chips button{min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);font:500 13px "Noto Sans KR",sans-serif;cursor:pointer}
+.chips button[aria-pressed=true]{background:var(--red);border-color:var(--red);color:#fff}
+.trend{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.trend svg{display:block;width:100%;height:auto}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--mute);margin:14px 0}
 .rmsg{font-size:13px;color:var(--redink);margin-top:8px;min-height:1em}
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap">
+  <nav class="views" id="views" aria-label="화면 선택"><button data-v="today" aria-pressed="true">운동</button><button data-v="history" aria-pressed="false">기록</button></nav>
   <p class="date" id="date"></p>
   <h1 id="dtitle">오늘의 운동</h1>
   <p class="dsub" id="dsub"></p>
@@ -248,6 +287,9 @@ let sel=wd>=1&&wd<=5?wd:0;const open=new Set();
 const fmt=s=>s>=60?`${Math.floor(s/60)}분${s%60?` ${s%60}초`:''}`:`${s}초`;
 const dk=id=>`wk:done:${dkey}:${id}`;
 function render(){
+  document.body.classList.toggle('hist',view==='history');
+  for(const v of document.querySelectorAll('#views button'))v.setAttribute('aria-pressed',String(v.dataset.v===view));
+  if(view==='history'){renderHistory();return}
   $('#date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${WD[wd]}요일`;
   $('#tabs').innerHTML=[1,2,3,4,5].map(d=>`<button data-d="${d}" aria-pressed="${d===sel}" class="${d===wd?'today':''}">${WD[d]}</button>`).join('');
   if(!sel){$('#dtitle').textContent='오늘은 휴식일';$('#dsub').textContent='주말엔 쉬고 월요일에 하체 A로 시작해요';$('#bar').style.width='0';$('#ptext').textContent='';
@@ -271,8 +313,115 @@ function render(){
     sess=`<button class="watch ${act?'on':''}" id="sessBtn">${act?'알림 연동 중 · 운동 끝내기':'워치로 운동 시작'}</button><p class="wmsg">${wmsg||(act?'워치 알림에서 [세트 완료]를 누르세요.':(AN.startWatchWorkout?'누르면 워치에 시작 알림이 가요. 워치 앱에서 바로 [시작]을 눌러도 돼요.':'시작하면 워치에 현재 운동과 [세트 완료] 버튼이 떠요.'))}</p>`}
   $('#list').innerHTML=`${sess}<p class="note">시작 전 5분 워밍업: 러닝머신 빠르게 걷기</p>${cards}`;
   $('#bar').style.width=(tot?dn/tot*100:0)+'%';$('#ptext').textContent=sel===wd?`오늘 ${dn} / ${tot}세트 완료`:'다른 요일은 미리보기예요. 체크는 오늘 날짜로 기록됩니다.'}
+/* ================= 기록 (주간 · 월간 · 운동별) ================= */
+let view='today',hview='week',weekOff=0,monthOff=0,pickDay=null,exSel=null;
+const pDay=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const kDay=t=>`${t.getFullYear()}-${t.getMonth()+1}-${t.getDate()}`;
+const addD=(t,n)=>new Date(t.getFullYear(),t.getMonth(),t.getDate()+n);
+const monday=t=>addD(t,-((t.getDay()+6)%7));
+const DOW=['월','화','수','목','금','토','일'];
+function loadHist(){try{return AN&&AN.history?JSON.parse(AN.history()):null}catch(e){return null}}
+/* 날짜별 합계: 세트 수, 운동 시간(분), 칼로리, 평균 심박, 운동 목록 */
+function byDay(h){
+  const m={};const g=k=>m[k]||(m[k]={sets:0,min:0,kcal:0,hrS:0,hrN:0,title:'',ex:{},first:0,last:0,hasSession:false});
+  for(const r of h.sets){if(r.type==='skip')continue;const d=g(r.day);d.sets++;
+    const e=d.ex[r.ex]||(d.ex[r.ex]={name:r.name,sets:0,w:[],sec:0});e.sets++;if(r.weight)e.w.push(parseFloat(r.weight));if(r.sec)e.sec+=r.sec;
+    d.first=d.first?Math.min(d.first,r.at):r.at;d.last=Math.max(d.last,r.at)}
+  for(const s of h.sessions){const d=g(s.day);d.hasSession=true;d.title=s.title||d.title;
+    d.min+=Math.max(0,Math.round((s.ended-s.started)/60000));d.kcal+=s.kcal||0;if(s.hrAvg){d.hrS+=s.hrAvg;d.hrN++}}
+  for(const k in m){const d=m[k];if(!d.hasSession&&d.first&&d.last>d.first)d.min=Math.round((d.last-d.first)/60000)}
+  return m}
+function defaultPick(days,m){
+  if(days.includes(dkey)&&m[dkey]&&m[dkey].sets)return dkey;
+  const withData=days.filter(k=>m[k]&&m[k].sets&&pDay(k)<=now);
+  return withData.length?withData[withData.length-1]:(days.includes(dkey)?dkey:days[0])}
+function sum(days,m){let o={days:0,sets:0,min:0,kcal:0};for(const k of days){const d=m[k];if(d&&d.sets){o.days++;o.sets+=d.sets;o.min+=d.min;o.kcal+=d.kcal}}return o}
+const fmtMin=n=>n>=60?`${Math.floor(n/60)}시간 ${n%60}분`:`${n}분`;
+const delta=(a,b,unit='')=>{const d=Math.round(a-b);return d===0?'같음':`${d>0?'▲':'▼'}${Math.abs(d)}${unit}`};
+function kpis(cur,prev,label){return `<div class="kpis">
+  <div class="kpi"><b>${cur.days}</b><small>운동한 날</small>${prev?`<i>${delta(cur.days,prev.days,'일')}</i>`:''}</div>
+  <div class="kpi"><b>${cur.sets}</b><small>세트</small>${prev?`<i>${delta(cur.sets,prev.sets)}</i>`:''}</div>
+  <div class="kpi"><b>${cur.min}</b><small>분</small>${prev?`<i>${delta(cur.min,prev.min,'분')}</i>`:''}</div>
+  <div class="kpi"><b>${Math.round(cur.kcal)}</b><small>kcal</small>${prev?`<i>${delta(cur.kcal,prev.kcal)}</i>`:''}</div></div>
+  ${prev?`<p class="note" style="margin:0 0 8px">빨간 작은 숫자: ${label} 대비</p>`:''}`}
+function dayDetail(k,m){
+  const d=m[k];const t=pDay(k);const head=`${t.getMonth()+1}월 ${t.getDate()}일 ${WD[t.getDay()]}요일`;
+  if(!d||!d.sets)return `<div class="detail"><h3>${head}</h3><p>이날은 기록이 없어요.</p></div>`;
+  const hr=d.hrN?` · 평균 심박 ${Math.round(d.hrS/d.hrN)}`:'';
+  const rows=Object.values(d.ex).map(e=>{const w=e.w.filter(x=>!isNaN(x));
+    const v=e.sec?fmtMin(Math.round(e.sec/60)):`${e.sets}세트${w.length?` · ${Math.max(...w)}kg`:''}`;
+    return `<div class="drow"><span>${esc(e.name)}</span><span>${v}</span></div>`}).join('');
+  return `<div class="detail"><h3>${head}${d.title?` · ${esc(d.title)}`:''}</h3><p>${d.sets}세트 · ${fmtMin(d.min)}${d.kcal?` · ${Math.round(d.kcal)} kcal`:''}${hr}</p>${rows}</div>`}
+function renderWeek(h,m){
+  const start=addD(monday(now),7*weekOff),days=[...Array(7)].map((_,i)=>kDay(addD(start,i)));
+  const prevDays=[...Array(7)].map((_,i)=>kDay(addD(start,i-7)));
+  const end=addD(start,6);
+  const title=weekOff===0?'이번 주':weekOff===-1?'지난주':`${start.getMonth()+1}/${start.getDate()} ~ ${end.getMonth()+1}/${end.getDate()}`;
+  const max=Math.max(1,...days.map(k=>m[k]?m[k].sets:0));
+  if(!pickDay||!days.includes(pickDay))pickDay=defaultPick(days,m);
+  const bars=days.map((k,i)=>{const n=m[k]?m[k].sets:0;
+    return `<button class="bar ${k===pickDay?'sel':''}" data-pick="${k}" aria-label="${DOW[i]}요일 ${n}세트"><span>${n||''}</span><div class="${n?'':'zero'}" style="height:${n?Math.max(6,n/max*100):3}%"></div><em>${DOW[i]}</em></button>`}).join('');
+  $('#dsub').textContent=`${start.getMonth()+1}월 ${start.getDate()}일 ~ ${end.getMonth()+1}월 ${end.getDate()}일`;
+  return `<div class="hnav"><button data-nav="-1" aria-label="이전 주">‹</button><b>${title}</b><button data-nav="1" aria-label="다음 주" ${weekOff>=0?'disabled':''}>›</button></div>
+  ${kpis(sum(days,m),sum(prevDays,m),'지난주')}<div class="bars">${bars}</div>${dayDetail(pickDay,m)}`}
+function renderMonth(h,m){
+  const first=new Date(now.getFullYear(),now.getMonth()+monthOff,1),y=first.getFullYear(),mo=first.getMonth();
+  const n=new Date(y,mo+1,0).getDate(),days=[...Array(n)].map((_,i)=>kDay(new Date(y,mo,i+1)));
+  const pn=new Date(y,mo,0).getDate(),prev=[...Array(pn)].map((_,i)=>kDay(new Date(y,mo-1,i+1)));
+  if(!pickDay||!days.includes(pickDay))pickDay=defaultPick(days,m);
+  const lead=(first.getDay()+6)%7;
+  let cells=DOW.map(d=>`<div class="h">${d}</div>`).join('')+'<span></span>'.repeat(lead);
+  cells+=days.map((k,i)=>{const d=m[k],c=d&&d.sets?(d.hasSession?'on':'lite'):'';
+    return `<button class="${c} ${k===dkey?'today':''} ${k===pickDay?'sel':''}" data-pick="${k}" aria-label="${mo+1}월 ${i+1}일${d&&d.sets?` ${d.sets}세트`:''}">${i+1}</button>`}).join('');
+  $('#dsub').textContent=`${y}년 ${mo+1}월`;
+  return `<div class="hnav"><button data-nav="-1" aria-label="이전 달">‹</button><b>${monthOff===0?'이번 달':`${y}년 ${mo+1}월`}</b><button data-nav="1" aria-label="다음 달" ${monthOff>=0?'disabled':''}>›</button></div>
+  ${kpis(sum(days,m),sum(prev,m),'지난달')}<div class="cal">${cells}</div>
+  <p class="note">진한 색: 워치로 운동을 끝까지 저장한 날 · 연한 색: 세트 기록만 있는 날</p>${dayDetail(pickDay,m)}`}
+function renderTrend(h,m){
+  const names={};for(const r of h.sets)if(r.type==='set_done'&&r.weight&&!isNaN(parseFloat(r.weight)))names[r.ex]=r.name;
+  const ids=Object.keys(names);
+  if(!ids.length)return `<div class="empty">무게를 적고 운동한 기록이 쌓이면 운동별 무게 변화가 그래프로 보여요.</div>`;
+  if(!exSel||!names[exSel])exSel=ids[0];
+  const chips=ids.map(id=>`<button data-ex="${id}" aria-pressed="${id===exSel}">${esc(names[id])}</button>`).join('');
+  const pts=Object.keys(m).filter(k=>m[k].ex[exSel]&&m[k].ex[exSel].w.length).sort((a,b)=>pDay(a)-pDay(b))
+    .map(k=>({k,w:Math.max(...m[k].ex[exSel].w),s:m[k].ex[exSel].sets}));
+  $('#dsub').textContent=names[exSel];
+  const last=pts[pts.length-1],firstP=pts[0];
+  const W=340,H=180,L=34,R=14,T=16,B=26,lo=Math.min(...pts.map(p=>p.w)),hi=Math.max(...pts.map(p=>p.w));
+  const span=hi-lo||Math.max(5,hi*.1),y0=lo-span*.15,y1=hi+span*.15;
+  const X=i=>pts.length===1?(L+W-R)/2:L+i*(W-L-R)/(pts.length-1),Y=w=>T+(1-(w-y0)/(y1-y0))*(H-T-B);
+  const raw=(y1-y0)/3,steps=[0.5,1,2,2.5,5,10,20,25,50,100];const step=steps.find(v=>v>=raw)||100;
+  const ticks=[];for(let v=Math.ceil(y0/step)*step;v<=y1;v+=step)ticks.push(v);
+  const path=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.w).toFixed(1)}`).join(' ');
+  const lab=p=>{const t=pDay(p.k);return `${t.getMonth()+1}/${t.getDate()}`};
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(names[exSel])} 날짜별 최고 무게">
+    ${ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" font-size="10" text-anchor="end" fill="var(--mute)">${v}</text>`).join('')}
+    <path d="${path}" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.w)}" r="${i===pts.length-1?5:3.5}" fill="var(--red)"/>`).join('')}
+    <text x="${X(pts.length-1)}" y="${Y(last.w)-10}" font-size="12" font-weight="700" text-anchor="${pts.length>1?'end':'middle'}" fill="var(--ink)">${last.w}kg</text>
+    <text x="${X(0)}" y="${H-8}" font-size="10" text-anchor="${pts.length>1?'start':'middle'}" fill="var(--mute)">${lab(firstP)}</text>
+    ${pts.length>1?`<text x="${X(pts.length-1)}" y="${H-8}" font-size="10" text-anchor="end" fill="var(--mute)">${lab(last)}</text>`:''}</svg>`;
+  const gain=pts.length>1?last.w-firstP.w:0;
+  const rows=pts.slice(-6).reverse().map(p=>`<div class="drow"><span>${lab(p)}</span><span>${p.w}kg · ${p.s}세트</span></div>`).join('');
+  return `<div class="chips">${chips}</div>
+  <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi"><b>${last.w}</b><small>최근 kg</small></div><div class="kpi"><b>${gain>0?'+':''}${gain}</b><small>처음보다 kg</small></div><div class="kpi"><b>${pts.length}</b><small>운동한 날</small></div></div>
+  <div class="trend">${svg}</div><div class="detail"><h3>최근 기록</h3><p>날짜별 그날 든 가장 무거운 무게</p>${rows}</div>`}
+function renderHistory(){
+  $('#date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${WD[wd]}요일`;
+  $('#dtitle').textContent='운동 기록';
+  $('#tabs').innerHTML=[['week','주간'],['month','월간'],['trend','운동별']].map(([k,l])=>`<button data-hv="${k}" aria-pressed="${k===hview}">${l}</button>`).join('');
+  const h=loadHist();
+  if(!h){$('#dsub').textContent='';$('#list').innerHTML='<div class="empty">기록은 휴대폰 앱(오늘의 운동)에서 볼 수 있어요.</div>';return}
+  const m=byDay(h);
+  $('#list').innerHTML=hview==='week'?renderWeek(h,m):hview==='month'?renderMonth(h,m):renderTrend(h,m);
+}
 document.addEventListener('click',e=>{
   const b=e.target.closest('button,[data-fig]');if(!b)return;
+  if(b.dataset.v){view=b.dataset.v;pickDay=null;render();scrollTo({top:0});return}
+  if(b.dataset.hv){hview=b.dataset.hv;pickDay=null;render();return}
+  if(b.dataset.nav){const d=+b.dataset.nav;if(hview==='week')weekOff=Math.min(0,weekOff+d);else monthOff=Math.min(0,monthOff+d);pickDay=null;render();return}
+  if(b.dataset.pick){pickDay=b.dataset.pick;render();return}
+  if(b.dataset.ex){exSel=b.dataset.ex;render();return}
   if(b.dataset.d){sel=+b.dataset.d;render();scrollTo({top:0});return}
   if(b.id==='sessBtn'){if(AN.sessionActive()){AN.endSession();wmsg=''}
     else if(AN.startWatchWorkout&&AN.startWatchWorkout()){wmsg='워치에 시작 알림을 보냈어요. 워치에서 알림을 눌러 [시작]하세요.'}

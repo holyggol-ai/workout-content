@@ -301,12 +301,16 @@ function frame(now){
   requestAnimationFrame(frame)}
 
 /* ---------- 화면 ---------- */
-const now=new Date(),wd=now.getDay(),dkey=`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+let now=new Date(),wd=now.getDay(),dkey=`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
 const WD=['일','월','화','수','목','금','토'];
 let sel=wd>=1&&wd<=5?wd:0;const open=new Set();
+/* 앱을 켜 둔 채 자정을 넘기면 오늘 표시·기록 날짜를 새 날로 옮긴다 */
+function rollDay(){const n=new Date(),k=`${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`;if(k===dkey)return false;
+  const wasToday=sel===wd||sel===0;now=n;wd=n.getDay();dkey=k;if(wasToday)sel=wd>=1&&wd<=5?wd:0;open.clear();return true}
 const fmt=s=>s>=60?`${Math.floor(s/60)}분${s%60?` ${s%60}초`:''}`:`${s}초`;
 const dk=id=>`wk:done:${dkey}:${id}`;
 function render(){
+  rollDay();
   document.body.classList.toggle('hist',view==='history');
   for(const v of document.querySelectorAll('#views button'))v.setAttribute('aria-pressed',String(v.dataset.v===view));
   if(view==='history'){renderHistory();return}
@@ -488,6 +492,8 @@ $('#tplus').addEventListener('click',()=>{if(Date.now()>tEnd)tEnd=Date.now();tEn
 $('#tstop').addEventListener('click',stop);
 render();requestAnimationFrame(frame);
 syncPlan();
+setInterval(()=>{if(!document.hidden&&rollDay())render()},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&rollDay())render()});
 if(AN){/* 워치에서 체크하면 열려 있는 화면도 따라 바뀐다 */
   const typing=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
   let lv=AN.kvVersion();

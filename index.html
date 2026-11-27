@@ -22,7 +22,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR
 h1{font-family:"Black Han Sans",sans-serif;font-weight:400;font-size:clamp(34px,9vw,46px);line-height:1.05;margin:6px 0 2px;text-wrap:balance}
 .dsub{margin:0 0 14px;font-size:15px;opacity:.92}
 .tabs{display:flex;gap:6px}
-.tabs button{flex:1;height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font:700 16px "Noto Sans KR",sans-serif;position:relative;cursor:pointer}
+.tabs button{flex:1;min-width:0;height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font:700 14px "Noto Sans KR",sans-serif;position:relative;cursor:pointer}
 .tabs button[aria-pressed=true]{background:#fff;color:var(--red)}
 .tabs button.today::after{content:"";position:absolute;top:6px;right:8px;width:6px;height:6px;border-radius:50%;background:currentColor}
 .tabs button:focus-visible,.dot:focus-visible,.more:focus-visible,.tb button:focus-visible,input:focus-visible{outline:3px solid #ffd2c8;outline-offset:2px}
@@ -126,7 +126,7 @@ body.hist .prog,body.hist #ptext,body.hist .remind,body.hist .foot{display:none}
   <p class="date" id="date"></p>
   <h1 id="dtitle">오늘의 운동</h1>
   <p class="dsub" id="dsub"></p>
-  <nav class="tabs" id="tabs" aria-label="요일 선택"></nav>
+  <nav class="tabs" id="tabs" aria-label="루틴 선택"></nav>
   <div class="prog"><div id="bar"></div></div>
   <p class="ptext" id="ptext"></p>
 </div></header>
@@ -303,23 +303,34 @@ function frame(now){
 /* ---------- 화면 ---------- */
 let now=new Date(),wd=now.getDay(),dkey=`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
 const WD=['일','월','화','수','목','금','토'];
-let sel=wd>=1&&wd<=5?wd:0;const open=new Set();
+const SHORT=['','하체A','상체A','유산소','하체B','상체B'];
+let sel=0,curD=1;const open=new Set();
 /* 앱을 켜 둔 채 자정을 넘기면 오늘 표시·기록 날짜를 새 날로 옮긴다 */
 function rollDay(){const n=new Date(),k=`${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`;if(k===dkey)return false;
-  const wasToday=sel===wd||sel===0;now=n;wd=n.getDay();dkey=k;if(wasToday)sel=wd>=1&&wd<=5?wd:0;open.clear();return true}
+  if(sel===curD)sel=0;now=n;wd=n.getDay();dkey=k;open.clear();return true}
+/* 요일 대신 순서대로: 오늘 한 운동이 있으면 그 루틴, 없으면 마지막으로 한 루틴의 다음 차례 */
+function lastWorked(){
+  let best=0,bc=0;for(let d=1;d<=5;d++){let c=0;DAYS[d].i.forEach((_,i)=>{c+=store.get(dk(`${d}-${i}`),[]).filter(Boolean).length});if(c>bc){bc=c;best=d}}
+  if(best)return{d:best,date:dkey};
+  const h=loadHist(),t=pDay(dkey);
+  if(h&&h.sets&&h.sets.length){let ld=null;const cnt={};for(const x of h.sets){const d=+String(x.ex||'').split('-')[0];if(!(d>=1&&d<=5)||pDay(x.day)>=t)continue;
+    if(!ld||pDay(x.day)>pDay(ld)){ld=x.day;for(const k in cnt)delete cnt[k]}if(x.day===ld)cnt[d]=(cnt[d]||0)+1}
+    if(ld){const d=+Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];return{d,date:ld}}}
+  const s=store.get('wk:last',null);return s&&s.d>=1&&s.d<=5&&s.date&&pDay(s.date)<t?s:null}
+const nextOf=L=>!L?1:L.date===dkey?L.d:L.d%5+1;
 const fmt=s=>s>=60?`${Math.floor(s/60)}분${s%60?` ${s%60}초`:''}`:`${s}초`;
 const dk=id=>`wk:done:${dkey}:${id}`;
 function render(){
   rollDay();
+  const L=lastWorked();curD=nextOf(L);if(!sel)sel=curD;
+  if(L&&JSON.stringify(L)!==JSON.stringify(store.get('wk:last',null))){store.set('wk:last',L);syncPlan()}
   document.body.classList.toggle('hist',view==='history');
   for(const v of document.querySelectorAll('#views button'))v.setAttribute('aria-pressed',String(v.dataset.v===view));
   if(view==='history'){renderHistory();return}
   $('#date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${WD[wd]}요일`;
-  $('#tabs').innerHTML=[1,2,3,4,5].map(d=>`<button data-d="${d}" aria-pressed="${d===sel}" class="${d===wd?'today':''}">${WD[d]}</button>`).join('');
-  if(!sel){$('#dtitle').textContent='오늘은 휴식일';$('#dsub').textContent='주말엔 쉬고 월요일에 하체 A로 시작해요';$('#bar').style.width='0';$('#ptext').textContent='';
-    $('#list').innerHTML='<div class="rest"><h2>푹 쉬세요</h2><p>근육은 쉬는 동안 자랍니다. 가벼운 산책이나 스트레칭은 좋아요. 위에서 요일을 누르면 그날 운동을 미리 볼 수 있어요.</p></div>';return}
+  $('#tabs').innerHTML=[1,2,3,4,5].map(d=>`<button data-d="${d}" aria-pressed="${d===sel}" class="${d===curD?'today':''}" aria-label="${d}번째 ${DAYS[d].t}${d===curD?' (오늘 차례)':''}">${SHORT[d]}</button>`).join('');
   const D=DAYS[sel];let tot=0,dn=0;
-  $('#dtitle').textContent=D.t;$('#dsub').textContent=`${WD[sel]}요일 · ${D.s}${sel!==wd?' (미리보기)':''}`;
+  $('#dtitle').textContent=D.t;$('#dsub').textContent=`${sel}번째 루틴 · ${D.s}${sel!==curD?' (오늘 차례 아님)':''}`;
   const cards=D.i.map((it,i)=>{
     const id=`${sel}-${i}`,done=store.get(dk(id),[]),w=store.get('wk:w:'+id,'');
     const cnt=done.filter(Boolean).length;tot+=it.s;dn+=Math.min(cnt,it.s);const all=cnt>=it.s;
@@ -333,10 +344,10 @@ function render(){
     <dl><dt>자세</dt><dd>${it.p}</dd><dt>집중</dt><dd>${it.c}</dd><dt>잘못하면</dt><dd>${it.x}</dd></dl>
     <a class="yt" href="${yt}" target="_blank" rel="noopener">${vid?'실제 자세 영상 보기 (YouTube)':'실제 영상 찾아보기 (YouTube)'}</a></div>`:''}</article>`}).join('');
   let sess='';
-  if(AN&&sel===wd){const act=AN.sessionActive();
+  if(AN&&sel===curD){const act=AN.sessionActive();
     sess=`<button class="watch ${act?'on':''}" id="sessBtn">${act?'알림 연동 중 · 운동 끝내기':'워치로 운동 시작'}</button><p class="wmsg">${wmsg||(act?'워치 알림에서 [세트 완료]를 누르세요.':(AN.startWatchWorkout?'누르면 워치에 시작 알림이 가요. 워치 앱에서 바로 [시작]을 눌러도 돼요.':'시작하면 워치에 현재 운동과 [세트 완료] 버튼이 떠요.'))}</p>`}
   $('#list').innerHTML=`${sess}<p class="note">시작 전 5분 워밍업: 러닝머신 빠르게 걷기</p>${cards}`;
-  $('#bar').style.width=(tot?dn/tot*100:0)+'%';$('#ptext').textContent=sel===wd?`오늘 ${dn} / ${tot}세트 완료`:'다른 요일은 미리보기예요. 체크는 오늘 날짜로 기록됩니다.'}
+  $('#bar').style.width=(tot?dn/tot*100:0)+'%';$('#ptext').textContent=sel===curD?`오늘 ${dn} / ${tot}세트 완료`:`오늘 차례는 ${DAYS[curD].t}예요. 여기서 체크해도 오늘 날짜로 기록돼요.`}
 /* ================= 기록 (주간 · 월간 · 운동별) ================= */
 let view='today',hview='week',weekOff=0,monthOff=0,pickDay=null,exSel=null;
 const pDay=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
@@ -478,7 +489,9 @@ function syncPlan(){
   if(!AN||!AN.syncPlan)return;
   const days={};
   for(let d=1;d<=5;d++)days[d]={title:DAYS[d].t,items:DAYS[d].i.map((it,i)=>planItem(it,`${d}-${i}`))};
-  try{AN.syncPlan(JSON.stringify({days}))}catch(e){}
+  const last=store.get('wk:last',null),rem=[1,2,3,4,5].map(d=>({t:DAYS[d].t,b:DAYS[d].i.map(it=>`${it.n} ${it.r.replace(/세트 × /,'×')}`).join(' · ')}));
+  try{store.set('wk:days',rem)}catch(e){}
+  try{AN.syncPlan(JSON.stringify({days,last}))}catch(e){}
 }
 
 /* ---------- 휴식 타이머 ---------- */
